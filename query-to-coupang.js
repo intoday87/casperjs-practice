@@ -1,22 +1,32 @@
-var casper = require('casper').create();
 var $ = require('jquery');
-
-function getLinks() {
-	var links = document.querySelectorAll('#productList li[id] > a');
-	return Array.prototype.map.call(links, function(e) {
-		return e.getAttribute('href');
-	});
+var DOM = {
+  mainQueryInput: 'input[name=q]'
 }
 
-casper.start('http://www.google.com', function (response) {
-	this.echo('status code: ' + response.status);
-	this.echo('coupang title: ' + this.getTitle());
-	this.fill('form#headerSearchForm', {q: '시마노'}, true);
+casper.test.begin('order to coupang', function (test) {
+  casper.start('http://www.coupang.com', function (response) {
+    test.assertEqual(response.status, 200, '메인 페이지 요청 성공');
+  });
+
+  casper.waitForSelector(DOM.mainQueryInput, function () {
+    this.fill('form#headerSearchForm', {q: '시마노'}, true);
+  });
+
+  casper.waitForUrl(/coupang\.com\/np\/search\?q\=/, function (response) {
+    test.assertEqual(response.status, 200, '검색 결과 페이지 요청 성공');
+  });
+
+  casper.waitForSelector(DOM.mainQueryInput, function () {
+    var query = this.evaluate(function () {
+      this.echo('document selector length : ' + document.querySelectorAll(DOM.mainQueryInput).length);
+      return $(DOM.mainQueryInput).val();
+    });
+    
+    test.assertEqual(query, '시마노', '검색어 일치');
+  });
+  casper.run(function () {
+    this.echo('test 완료'); 
+    test.done();
+  });
 });
 
-casper.then(function () {
-	this.echo('search result title: ' + this.getTitle());
-	this.echo(this.evaluate(getLinks).join('-'));
-})
-
-casper.run();
