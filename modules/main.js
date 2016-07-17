@@ -6,8 +6,16 @@ var SELECTORS = {
   kimpoAirportBtn         : '[aircode="GMP"]',
   jejuAirportBtn          : '[aircode="CJU"]',
   reservationCalendar     : '#DoubleCalendar',
-  availableDepartueDate   : '#availableDepartueDate',
-  availableArrivalDate    : '#availableArrivalDate',
+  calendarToSelectDate    : {
+    departure  : {
+      notHighlighted: '#doubleCal1 a.ui-state-default:not(.ui-state-highlight)',
+      availableDate : '#availableDepartueDate',
+    },
+    destination: {
+      notHighlighted: '#doubleCal2 a.ui-state-default:not(.ui-state-highlight)',
+      availableDate : '#availableArrivalDate',
+    }
+  },
   selectDateBtn           : '#btnDoubleOk',
   reservationBtn          : '#reservation',
   departurePrice          : '[name="strDep"]',
@@ -45,30 +53,38 @@ casper.test.begin('제주항공에서 김포 -> 제주 가장 낮은 가격 티�
     this.click(SELECTORS.jejuAirportBtn);
   });
 
+  function setSelectorToAvailableDate(availableSelector, dateSelector, nthDate) {
+    if (!nthDate) nthDate = 0;
+    var AVAILABLE_ID_NAME = availableSelector.replace(/\W+/, '');
+    casper.evaluate(function (departureCalendarDateNotHighlightedSelector, availableIdName, nthDate) {
+      return $(departureCalendarDateNotHighlightedSelector).eq(nthDate).attr('id', availableIdName).text();
+    }, dateSelector, AVAILABLE_ID_NAME, nthDate);
+  }
+
+  function extractAvaliableDate(availableSelector) {
+    return casper.evaluate(function (availableSelector) {
+      return $(availableSelector).text();
+    }, availableSelector);
+  }
+
   casper.waitUntilVisible(SELECTORS.reservationCalendar, function () {
-    var date = this.evaluate(function () {
-      return $('#doubleCal1 a.ui-state-default:not(.ui-state-highlight)').first().attr('id', 'availableDepartueDate').text();
-    });
-
-    this.echo(date + '로 출발 날짜 선택');
-    test.assertExist(SELECTORS.availableDepartueDate, '출발 선택 가능한 날짜 지정');
+    setSelectorToAvailableDate(SELECTORS.calendarToSelectDate.departure.availableDate, SELECTORS.calendarToSelectDate.departure.notHighlighted, 1);
+    this.echo(extractAvaliableDate(SELECTORS.calendarToSelectDate.departure.availableDate) + '로 출발 날짜 선택');
+    test.assertExist(SELECTORS.calendarToSelectDate.departure.availableDate, '출발 선택 가능한 날짜 지정');
   });
 
   casper.then(function () {
-    this.click(SELECTORS.availableDepartueDate);
+    this.click(SELECTORS.calendarToSelectDate.departure.availableDate);
   });
 
   casper.then(function () {
-    var date = this.evaluate(function () {
-      return $('#doubleCal2 a.ui-state-default:not(.ui-state-highlight)').eq(1).attr('id', 'availableArrivalDate').text();
-    });
-
-    this.echo(date + '로 도착 날짜 선택');
-    test.assertExist(SELECTORS.availableArrivalDate, '도착 선택 가능한 날짜 지정');
+    setSelectorToAvailableDate(SELECTORS.calendarToSelectDate.destination.availableDate, SELECTORS.calendarToSelectDate.destination.notHighlighted, 2);
+    this.echo(extractAvaliableDate(SELECTORS.calendarToSelectDate.destination.availableDate) + '로 도착 날짜 선택');
+    test.assertExist(SELECTORS.calendarToSelectDate.destination.availableDate, '도착 선택 가능한 날짜 지정');
   });
 
   casper.then(function () {
-    this.click(SELECTORS.availableArrivalDate);
+    this.click(SELECTORS.calendarToSelectDate.destination.availableDate);
   });
 
   casper.then(function () {
@@ -112,21 +128,25 @@ casper.test.begin('제주항공에서 김포 -> 제주 가장 낮은 가격 티�
       this.die('도착지 가격 정보 리스트 정보 조회 실패');
     }, 5000);
 
-  casper.then(function () {
-    var records = this.evaluate(function (departureInfoTableBodySelector, departurePriceSelector) {
+  function extractFilghtInfo(tableBodySelector, priceSelector) {
+    return casper.evaluate(function (tableBodySelector, priceSelector) {
       var arr = [];
 
-      $(departureInfoTableBodySelector).find(departurePriceSelector).each(function () {
+      $(tableBodySelector).find(priceSelector).each(function () {
         var $elem = $(this);
         arr.push({
           departureTime: $elem.closest('tr').find('td:nth-child(2)').text(),
           arrivalTime  : $elem.closest('tr').find('td:nth-child(3)').text(),
-          price        : $elem.text()
+          price        : $elem.text().replace(/\D+/g, '')
         });
       });
 
       return arr;
-    }, SELECTORS.departureInfoTableBody, SELECTORS.departurePrice);
+    }, tableBodySelector, priceSelector);
+  }
+
+  casper.then(function () {
+    var records = extractFilghtInfo(SELECTORS.departureInfoTableBody, SELECTORS.departurePrice);
 
     if (records.length) {
       records.sort(function (v1, v2) {
@@ -140,20 +160,7 @@ casper.test.begin('제주항공에서 김포 -> 제주 가장 낮은 가격 티�
   });
 
   casper.then(function () {
-    var records = this.evaluate(function (destinationInfoTableBodySelector, destinationPriceSelector) {
-      var arr = [];
-
-      $(destinationInfoTableBodySelector).find(destinationPriceSelector).each(function () {
-        var $elem = $(this);
-        arr.push({
-          departureTime: $elem.closest('tr').find('td:nth-child(2)').text(),
-          arrivalTime  : $elem.closest('tr').find('td:nth-child(3)').text(),
-          price        : $elem.text()
-        });
-      });
-
-      return arr;
-    }, SELECTORS.destinationInfoTableBody, SELECTORS.destinationPrice);
+    var records = extractFilghtInfo(SELECTORS.destinationInfoTableBody, SELECTORS.destinationPrice);
 
     if (records.length) {
       records.sort(function (v1, v2) {
