@@ -113,44 +113,54 @@ casper.test.begin('제주항공에서 김포 -> 제주 가장 낮은 가격 티�
     }, 5000);
 
   casper.then(function () {
-    var prices = this.evaluate(function (departureInfoTableBodySelector, departurePriceSelector) {
+    var records = this.evaluate(function (departureInfoTableBodySelector, departurePriceSelector) {
       var arr = [];
 
       $(departureInfoTableBodySelector).find(departurePriceSelector).each(function () {
-        arr.push($(this).text());
+        var $elem = $(this);
+        arr.push({
+          departureTime: $elem.closest('tr').find('td:nth-child(2)').text(),
+          arrivalTime  : $elem.closest('tr').find('td:nth-child(3)').text(),
+          price        : $elem.text()
+        });
       });
 
       return arr;
     }, SELECTORS.departureInfoTableBody, SELECTORS.departurePrice);
 
-    if (prices.length) {
-      prices.sort(function (v1, v2) {
-        return v1 < v2;
+    if (records.length) {
+      records.sort(function (v1, v2) {
+        return v1.price < v2.price;
       });
 
-      this.echo('출발지 가장 낮은 가격: ' + prices[0]);
+      this.echo('출발지 가장 낮은 가격: ' + records[0].price + ', 출발시간: ' + records[0].departureTime + ', 도착시간: ' + records[0].arrivalTime);
     } else {
       this.echo('출발지 가격이 존재하지 않음');
     }
   });
 
   casper.then(function () {
-    var prices = this.evaluate(function (destinationInfoTableBodySelector, destinationPriceSelector) {
+    var records = this.evaluate(function (destinationInfoTableBodySelector, destinationPriceSelector) {
       var arr = [];
 
       $(destinationInfoTableBodySelector).find(destinationPriceSelector).each(function () {
-        arr.push($(this).text());
+        var $elem = $(this);
+        arr.push({
+          departureTime: $elem.closest('tr').find('td:nth-child(2)').text(),
+          arrivalTime  : $elem.closest('tr').find('td:nth-child(3)').text(),
+          price        : $elem.text()
+        });
       });
 
       return arr;
     }, SELECTORS.destinationInfoTableBody, SELECTORS.destinationPrice);
 
-    if (prices.length) {
-      prices.sort(function (v1, v2) {
-        return v1 < v2;
+    if (records.length) {
+      records.sort(function (v1, v2) {
+        return v1.price < v2.price;
       });
 
-      this.echo('도착지 가장 낮은 가격: ' + prices[0]);
+      this.echo('도착지 가장 낮은 가격: ' + records[0].price + ', 출발시간: ' + records[0].departureTime + ', 도착시간: ' + records[0].arrivalTime);
     } else {
       this.echo('도착지 가격이 존재하지 않음');
     }
